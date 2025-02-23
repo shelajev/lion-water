@@ -127,7 +127,7 @@ function generateLevel() {
         if (groundPeopleCount < 2 && Math.random() < 0.5) {
             // Place on ground if less than 2 people are there
             personX = Math.floor(Math.random() * (canvas.width - personSize));
-            personY = platforms[0].y - personSize;
+            personY = platforms[0].y - personSize*0.7;
             platform = platforms[0];
             groundPeopleCount++;
         } else {
@@ -148,7 +148,7 @@ function generateLevel() {
             }
 
             personX = Math.floor(Math.random() * (platform.width - personSize)) + platform.x;
-            personY = platform.y - personSize;
+            personY = platform.y - personSize*0.7;
             occupiedPlatforms.add(platform);
         }
 
