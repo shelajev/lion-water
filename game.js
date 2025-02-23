@@ -63,37 +63,54 @@ function generateLevel() {
     trees = []; // Reset trees
     gameWon = false; // Reset game state
 
-    // Increase the number of platforms
-    const numPlatforms = Math.floor(Math.random() * 5) + 6; // At least twice as many platforms
+    // Increase the number of platforms by 50%
+    const numPlatforms = Math.floor(Math.random() * 5 * 1.5) + 9; // 50% more platforms
     const groundZones = 8;
     const zoneWidth = canvas.width / groundZones;
     const personSize = 60; // 1.5x larger
+    const minPlatformY = 100; // Minimum y position for platforms
 
     for (let i = 0; i < numPlatforms; i++) {
         let width = Math.max(Math.floor(Math.random() * 150) + 50, personSize * 2); // Ensure at least 2x person width
         let height = 20;
         let x, y;
+        let validPosition = false;
 
-        // Select a base platform to build from
-        let basePlatform;
-        if (platforms.length === 1) {
-            // For the first platform, choose an even-numbered zone on the ground
-            const zone = Math.floor(Math.random() * (groundZones / 2)) * 2;
-            x = zone * zoneWidth + Math.random() * zoneWidth;
-            y = platforms[0].y - Math.floor(Math.random() * 100 + player.height * 1.5);
-            basePlatform = platforms[0];
-        } else {
-            // For subsequent platforms, choose an existing platform
-            basePlatform = platforms[Math.floor(Math.random() * platforms.length)];
-            const direction = Math.random() < 0.5 ? -1 : 1; // Left or right
-            x = basePlatform.x + direction * (Math.random() * 100 + 50);
-            y = basePlatform.y - Math.floor(Math.random() * 100 + player.height * 1.5);
+        while (!validPosition) {
+            // Select a base platform to build from
+            let basePlatform;
+            if (platforms.length === 1) {
+                // For the first platform, choose an even-numbered zone on the ground
+                const zone = Math.floor(Math.random() * (groundZones / 2)) * 2;
+                x = zone * zoneWidth + Math.random() * zoneWidth;
+                y = platforms[0].y - Math.floor(Math.random() * 100 + player.height * 1.5);
+                basePlatform = platforms[0];
+            } else {
+                // For subsequent platforms, choose an existing platform
+                basePlatform = platforms[Math.floor(Math.random() * platforms.length)];
+                const direction = Math.random() < 0.5 ? -1 : 1; // Left or right
+                x = basePlatform.x + direction * (Math.random() * 100 + 50);
+                y = basePlatform.y - Math.floor(Math.random() * 100 + player.height * 1.5);
+            }
+
+            // Ensure the new platform is within the canvas bounds and not too close to the top
+            if (x < 0) x = 0;
+            if (x + width > canvas.width) x = canvas.width - width;
+            if (y < minPlatformY) y = minPlatformY;
+
+            // Check for overlap with existing platforms
+            validPosition = true;
+            for (const platform of platforms) {
+                if (
+                    x < platform.x + platform.width &&
+                    x + width > platform.x &&
+                    Math.abs(y - platform.y) < personSize * 1.5
+                ) {
+                    validPosition = false;
+                    break;
+                }
+            }
         }
-
-        // Ensure the new platform is within the canvas bounds
-        if (x < 0) x = 0;
-        if (x + width > canvas.width) x = canvas.width - width;
-        if (y < 0) y = 0;
 
         platforms.push({ x, y, width, height });
 
@@ -111,12 +128,12 @@ function generateLevel() {
     const numGroundTrees = Math.floor(Math.random() * 3) + 2; // 2 to 4 trees on the ground
     for (let i = 0; i < numGroundTrees; i++) {
         const treeX = Math.random() * (canvas.width - 50);
-        const treeY = canvas.height - 100; // Place tree on the ground
+        const treeY = canvas.height - 120; // Place tree on the ground
         const treeSprite = treeSprites[Math.floor(Math.random() * treeSprites.length)];
         trees.push({ x: treeX, y: treeY, sprite: treeSprite });
     }
 
-    const numPeople = Math.floor(Math.random() * 3) + 3;
+    const numPeople = Math.floor(Math.random() * 5) + 5;
     const occupiedPlatforms = new Set();
     let groundPeopleCount = 0;
 
@@ -127,7 +144,7 @@ function generateLevel() {
         if (groundPeopleCount < 2 && Math.random() < 0.5) {
             // Place on ground if less than 2 people are there
             personX = Math.floor(Math.random() * (canvas.width - personSize));
-            personY = platforms[0].y - personSize*0.7;
+            personY = platforms[0].y - personSize * 0.7;
             platform = platforms[0];
             groundPeopleCount++;
         } else {
@@ -148,7 +165,7 @@ function generateLevel() {
             }
 
             personX = Math.floor(Math.random() * (platform.width - personSize)) + platform.x;
-            personY = platform.y - personSize*0.7;
+            personY = platform.y - personSize * 0.7;
             occupiedPlatforms.add(platform);
         }
 
@@ -270,7 +287,9 @@ function update(dt) {
 }
 
 function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // Set the background color to a pale light blue
+    ctx.fillStyle = '#E0FFFF'; // Light cyan color, which is a pale light blue
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // Draw trees
     for (const tree of trees) {
