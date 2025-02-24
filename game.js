@@ -51,7 +51,43 @@ let elephants = []; // New array for elephants
 
 // Play background music
 const backgroundMusic = document.getElementById('backgroundMusic');
-backgroundMusic.play();
+// backgroundMusic.play(); // Remove this line
+
+// Add music start to first interaction
+let musicStarted = false;
+
+// Add seeded random number generator
+class Random {
+    constructor(seed) {
+        this.seed = seed;
+    }
+
+    // Returns a random number between 0 and 1
+    random() {
+        const x = Math.sin(this.seed++) * 10000;
+        return x - Math.floor(x);
+    }
+
+    // Returns a random integer between min (inclusive) and max (exclusive)
+    randInt(min, max) {
+        return Math.floor(this.random() * (max - min)) + min;
+    }
+
+    // Returns a random boolean with given probability
+    chance(probability) {
+        return this.random() < probability;
+    }
+}
+
+// Get seed from URL parameter or generate a random one
+const urlParams = new URLSearchParams(window.location.search);
+const seed = parseInt(urlParams.get('seed')) || Math.floor(Math.random() * 1000000);
+const rng = new Random(seed);
+
+// Update URL with the current seed
+if (!urlParams.has('seed')) {
+    window.history.replaceState({}, '', `${window.location.pathname}?seed=${seed}`);
+}
 
 function resizeCanvas() {
     canvas.width = window.innerWidth;
@@ -63,26 +99,25 @@ function resizeCanvas() {
 window.addEventListener('resize', resizeCanvas);
 
 function generateLevel() {
-    platforms = [{ x: 0, y: canvas.height - 50, width: canvas.width, height: 50 }]; // Ground
+    platforms = [{ x: 0, y: canvas.height - 50, width: canvas.width, height: 50 }];
     people = [];
-    trees = []; // Reset trees
-    gameWon = false; // Reset game state
-    elephants = []; // New array for elephants
+    trees = [];
+    gameWon = false;
+    elephants = [];
 
-    // Increase the number of platforms by 50%
-    const numPlatforms = Math.floor(Math.random() * 5 * 1.5) + 9; // 50% more platforms
+    const numPlatforms = rng.randInt(9, 15); // Previously: Math.floor(Math.random() * 5 * 1.5) + 9
     const groundZones = 8;
     const zoneWidth = canvas.width / groundZones;
-    const personSize = 60; // 1.5x larger
-    const elephantSize = 80; // Elephant size
-    const minPlatformY = 100; // Minimum y position for platforms
+    const personSize = 60;
+    const elephantSize = 80;
+    const minPlatformY = 100;
 
     // Generate 2-3 elephants on the ground
-    const numElephants = Math.floor(Math.random() * 2) + 2;
+    const numElephants = rng.randInt(2, 4);
     for (let i = 0; i < numElephants; i++) {
-        const elephantX = Math.floor(Math.random() * (canvas.width - elephantSize));
+        const elephantX = rng.randInt(0, canvas.width - elephantSize);
         const elephantY = canvas.height - 50 - elephantSize * 0.7;
-        const velocity = Math.random() < 0.5 ? 0.5 : -0.5;
+        const velocity = rng.chance(0.5) ? 0.4 : -0.4; // Slower elephants (was 0.5)
         
         elephants.push({
             x: elephantX,
@@ -90,39 +125,34 @@ function generateLevel() {
             width: elephantSize,
             height: elephantSize,
             vx: velocity,
-            platform: platforms[0] // Ground platform
+            platform: platforms[0]
         });
     }
 
     for (let i = 0; i < numPlatforms; i++) {
-        let width = Math.max(Math.floor(Math.random() * 150) + 50, personSize * 2); // Ensure at least 2x person width
+        let width = Math.max(rng.randInt(50, 200), personSize * 2);
         let height = 20;
         let x, y;
         let validPosition = false;
 
         while (!validPosition) {
-            // Select a base platform to build from
             let basePlatform;
             if (platforms.length === 1) {
-                // For the first platform, choose an even-numbered zone on the ground
-                const zone = Math.floor(Math.random() * (groundZones / 2)) * 2;
-                x = zone * zoneWidth + Math.random() * zoneWidth;
-                y = platforms[0].y - Math.floor(Math.random() * 100 + player.height * 1.5);
+                const zone = rng.randInt(0, groundZones / 2) * 2;
+                x = zone * zoneWidth + rng.random() * zoneWidth;
+                y = platforms[0].y - rng.randInt(player.height * 1.5, player.height * 1.5 + 100);
                 basePlatform = platforms[0];
             } else {
-                // For subsequent platforms, choose an existing platform
-                basePlatform = platforms[Math.floor(Math.random() * platforms.length)];
-                const direction = Math.random() < 0.5 ? -1 : 1; // Left or right
-                x = basePlatform.x + direction * (Math.random() * 100 + 50);
-                y = basePlatform.y - Math.floor(Math.random() * 100 + player.height * 1.5);
+                basePlatform = platforms[rng.randInt(0, platforms.length)];
+                const direction = rng.chance(0.5) ? -1 : 1;
+                x = basePlatform.x + direction * (rng.random() * 100 + 50);
+                y = basePlatform.y - rng.randInt(player.height * 1.5, player.height * 1.5 + 100);
             }
 
-            // Ensure the new platform is within the canvas bounds and not too close to the top
             if (x < 0) x = 0;
             if (x + width > canvas.width) x = canvas.width - width;
             if (y < minPlatformY) y = minPlatformY;
 
-            // Check for overlap with existing platforms
             validPosition = true;
             for (const platform of platforms) {
                 if (
@@ -139,29 +169,28 @@ function generateLevel() {
         platforms.push({ x, y, width, height });
 
         // Randomly place trees on the platform
-        const numTrees = Math.floor(Math.random() * 2) + 1; // 1 to 2 trees per platform
+        const numTrees = rng.randInt(1, 3);
         for (let j = 0; j < numTrees; j++) {
-            const treeX = Math.random() * (width - 50) + x; // Ensure tree doesn't overlap platform edges
-            const treeY = y - 65; // Place tree on top of the platform
-            const treeSprite = treeSprites[Math.floor(Math.random() * treeSprites.length)];
+            const treeX = rng.random() * (width - 50) + x;
+            const treeY = y - 65;
+            const treeSprite = treeSprites[rng.randInt(0, treeSprites.length)];
             trees.push({ x: treeX, y: treeY, sprite: treeSprite });
         }
     }
 
     // Place trees on the ground
-    const numGroundTrees = Math.floor(Math.random() * 3) + 2; // 2 to 4 trees on the ground
+    const numGroundTrees = rng.randInt(2, 5);
     for (let i = 0; i < numGroundTrees; i++) {
-        const treeX = Math.random() * (canvas.width - 50);
-        const treeY = canvas.height - 120; // Place tree on the ground
-        const treeSprite = treeSprites[Math.floor(Math.random() * treeSprites.length)];
+        const treeX = rng.random() * (canvas.width - 50);
+        const treeY = canvas.height - 120;
+        const treeSprite = treeSprites[rng.randInt(0, treeSprites.length)];
         trees.push({ x: treeX, y: treeY, sprite: treeSprite });
     }
 
-    const numPeople = Math.floor(Math.random() * 5) + 5;
+    const numPeople = rng.randInt(5, 10);
     const occupiedPlatforms = new Set();
 
     for (let i = 0; i < numPeople; i++) {
-        // Find a platform that is not occupied and is at least 3x person width
         let platform;
         let personX, personY;
         let foundPlatform = false;
@@ -174,17 +203,13 @@ function generateLevel() {
             }
         }
 
-        // If no platform found, stop generating more people
-        if (!foundPlatform) {
-            break;
-        }
+        if (!foundPlatform) break;
 
-        personX = Math.floor(Math.random() * (platform.width - personSize)) + platform.x;
+        personX = rng.randInt(0, platform.width - personSize) + platform.x;
         personY = platform.y - personSize * 0.7;
         occupiedPlatforms.add(platform);
 
-        // Add velocity to people
-        const velocity = Math.random() < 0.5 ? 0.5 : -0.5;
+        const velocity = rng.chance(0.5) ? 0.5 : -0.5;
         const spriteLeft = new Image();
         spriteLeft.src = 'running-left.png';
         const spriteWet = new Image();
@@ -222,8 +247,8 @@ function update(dt) {
     if (gameWon) return;
 
     player.vx = 0;
-    if (keys['ArrowLeft']) player.vx = -5;
-    if (keys['ArrowRight']) player.vx = 5;
+    if (keys['ArrowLeft']) player.vx = -6; // Faster lion movement (was -5)
+    if (keys['ArrowRight']) player.vx = 6; // Faster lion movement (was 5)
 
     player.vy += player.gravity;
     player.x += player.vx;
@@ -376,7 +401,7 @@ function draw() {
     // Display win message if the game is won
     if (gameWon) {
         ctx.fillStyle = 'gold';
-        ctx.font = '48px Comic Sans MS';
+        ctx.font = '60px Comic Sans MS';
         ctx.textAlign = 'center';
         ctx.fillText("Congratulations, you won!", canvas.width / 2, canvas.height / 2);
     }
@@ -384,6 +409,12 @@ function draw() {
 
 const keys = {};
 document.addEventListener('keydown', (event) => {
+    // Start music on first interaction if not already started
+    if (!musicStarted) {
+        backgroundMusic.play().catch(e => console.log("Music play failed:", e));
+        musicStarted = true;
+    }
+
     keys[event.key] = true;
     if (event.key === ' ' || event.key === 'ArrowUp') {
         if (player.isOnGround || player.canDoubleJump) {

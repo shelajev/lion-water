@@ -32,6 +32,12 @@ You control a lion that can run, jump, and splash water. Your mission is to spla
 - People stop running when they get wet and show an umbrella
 - You win when all people are wet
 
+## Level Generation
+- Levels are procedurally generated using a seeded random number generator
+- You can share specific levels by sharing the URL with the seed parameter
+- Example: `water_game.html?seed=12345` will generate the same level every time
+- If no seed is provided, a random one will be generated and added to the URL
+
 ## How to Run
 1. Make sure you have all the required image files in your directory:
    - lion.png
