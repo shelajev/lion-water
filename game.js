@@ -25,7 +25,7 @@ const treeSprites = ['tree1.png', 'tree2.png', 'tree3.png'].map(src => {
 });
 
 // Adjust player dimensions to be square and 2x larger
-const playerSize = 60; // New size for both width and height
+const playerSize = 80; // New size for both width and height
 const player = {
     x: 50, y: 50, width: playerSize, height: playerSize,
     vx: 0, vy: 0, gravity: 0.5, jumpForce: -10,
@@ -39,10 +39,15 @@ const player = {
 // Load the lion sprite
 player.sprite.src = 'lion.png';
 
+// Load elephant sprite
+const elephantSprite = new Image();
+elephantSprite.src = 'elephant.png';
+
 let platforms = [];
 let people = [];
 let trees = []; // Array to hold tree positions
 let gameWon = false; // Flag to track if the game is won
+let elephants = []; // New array for elephants
 
 // Play background music
 const backgroundMusic = document.getElementById('backgroundMusic');
@@ -62,13 +67,32 @@ function generateLevel() {
     people = [];
     trees = []; // Reset trees
     gameWon = false; // Reset game state
+    elephants = []; // New array for elephants
 
     // Increase the number of platforms by 50%
     const numPlatforms = Math.floor(Math.random() * 5 * 1.5) + 9; // 50% more platforms
     const groundZones = 8;
     const zoneWidth = canvas.width / groundZones;
     const personSize = 60; // 1.5x larger
+    const elephantSize = 80; // Elephant size
     const minPlatformY = 100; // Minimum y position for platforms
+
+    // Generate 2-3 elephants on the ground
+    const numElephants = Math.floor(Math.random() * 2) + 2;
+    for (let i = 0; i < numElephants; i++) {
+        const elephantX = Math.floor(Math.random() * (canvas.width - elephantSize));
+        const elephantY = canvas.height - 50 - elephantSize * 0.7;
+        const velocity = Math.random() < 0.5 ? 0.5 : -0.5;
+        
+        elephants.push({
+            x: elephantX,
+            y: elephantY,
+            width: elephantSize,
+            height: elephantSize,
+            vx: velocity,
+            platform: platforms[0] // Ground platform
+        });
+    }
 
     for (let i = 0; i < numPlatforms; i++) {
         let width = Math.max(Math.floor(Math.random() * 150) + 50, personSize * 2); // Ensure at least 2x person width
@@ -135,44 +159,32 @@ function generateLevel() {
 
     const numPeople = Math.floor(Math.random() * 5) + 5;
     const occupiedPlatforms = new Set();
-    let groundPeopleCount = 0;
 
     for (let i = 0; i < numPeople; i++) {
+        // Find a platform that is not occupied and is at least 3x person width
         let platform;
         let personX, personY;
+        let foundPlatform = false;
 
-        if (groundPeopleCount < 2 && Math.random() < 0.5) {
-            // Place on ground if less than 2 people are there
-            personX = Math.floor(Math.random() * (canvas.width - personSize));
-            personY = platforms[0].y - personSize * 0.7;
-            platform = platforms[0];
-            groundPeopleCount++;
-        } else {
-            // Find a platform that is not occupied and is at least 3x person width
-            // Try to find an available platform
-            let foundPlatform = false;
-            for (let p of platforms) {
-                if (p !== platforms[0] && !occupiedPlatforms.has(p)) {
-                    platform = p;
-                    foundPlatform = true;
-                    break;
-                }
-            }
-
-            // If no platform found, stop generating more people
-            if (!foundPlatform) {
+        for (let p of platforms) {
+            if (p !== platforms[0] && !occupiedPlatforms.has(p)) {
+                platform = p;
+                foundPlatform = true;
                 break;
             }
-
-            personX = Math.floor(Math.random() * (platform.width - personSize)) + platform.x;
-            personY = platform.y - personSize * 0.7;
-            occupiedPlatforms.add(platform);
         }
 
+        // If no platform found, stop generating more people
+        if (!foundPlatform) {
+            break;
+        }
+
+        personX = Math.floor(Math.random() * (platform.width - personSize)) + platform.x;
+        personY = platform.y - personSize * 0.7;
+        occupiedPlatforms.add(platform);
+
         // Add velocity to people
-        const velocity = Math.random() < 0.5 ? 0.5 : -0.5; // Random initial direction
-        const spriteRight = new Image();
-        spriteRight.src = 'running-right.png';
+        const velocity = Math.random() < 0.5 ? 0.5 : -0.5;
         const spriteLeft = new Image();
         spriteLeft.src = 'running-left.png';
         const spriteWet = new Image();
@@ -186,7 +198,6 @@ function generateLevel() {
             isWet: false,
             vx: velocity,
             platform,
-            spriteRight,
             spriteLeft,
             spriteWet
         });
@@ -208,7 +219,7 @@ function gameLoop(currentTime) {
 }
 
 function update(dt) {
-    if (gameWon) return; // Stop updating if the game is won
+    if (gameWon) return;
 
     player.vx = 0;
     if (keys['ArrowLeft']) player.vx = -5;
@@ -244,7 +255,7 @@ function update(dt) {
         player.splashCooldown -= dt;
     }
 
-    if (player.isSplashing && player.splashCooldown <= 0) {
+    if (player.isSplashing && player.splashCooldown <= 0 && player.waterLevel > 0) {
         for (const person of people) {
             if (player.x < person.x + person.width + 50 &&
                 player.x + player.width + 50 > person.x &&
@@ -282,18 +293,37 @@ function update(dt) {
         }
     }
 
-    // Check if all people are wet
+    // Update elephants movement
+    for (const elephant of elephants) {
+        elephant.x += elephant.vx;
+
+        // Check platform boundaries for elephants
+        if (elephant.x < elephant.platform.x || 
+            elephant.x + elephant.width > elephant.platform.x + elephant.platform.width) {
+            elephant.vx *= -1;
+        }
+
+        // Check collision with player
+        if (player.x < elephant.x + elephant.width &&
+            player.x + player.width > elephant.x &&
+            player.y < elephant.y + elephant.height &&
+            player.y + player.height > elephant.y) {
+            player.waterLevel = 0; // Lion loses all water
+        }
+    }
+
+    // Check if all people (excluding elephants) are wet
     gameWon = people.every(person => person.isWet);
 }
 
 function draw() {
     // Set the background color to a pale light blue
-    ctx.fillStyle = '#E0FFFF'; // Light cyan color, which is a pale light blue
+    ctx.fillStyle = '#E0FFFF';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // Draw trees
     for (const tree of trees) {
-        ctx.drawImage(tree.sprite, tree.x, tree.y, 50, 100); // Draw tree with fixed size
+        ctx.drawImage(tree.sprite, tree.x, tree.y, 50, 100);
     }
 
     // Draw platforms
@@ -303,15 +333,38 @@ function draw() {
     }
 
     // Draw the ground
-    ctx.fillStyle = '#CD7F32'; // Set ground color to bronze
+    ctx.fillStyle = '#CD7F32';
     ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
+
+    // Draw elephants
+    for (const elephant of elephants) {
+        ctx.save();
+        if (elephant.vx > 0) {
+            ctx.scale(-1, 1);
+            ctx.drawImage(elephantSprite, -elephant.x - elephant.width, elephant.y, elephant.width, elephant.height);
+        } else {
+            ctx.drawImage(elephantSprite, elephant.x, elephant.y, elephant.width, elephant.height);
+        }
+        ctx.restore();
+    }
 
     // Draw the shower sprite for the well
     ctx.drawImage(wellSprite, well.x, well.y, well.width, well.height);
 
+    // Draw people
     for (const person of people) {
-        let sprite = person.isWet ? person.spriteWet : (person.vx > 0 ? person.spriteRight : person.spriteLeft);
-        ctx.drawImage(sprite, person.x, person.y, person.width, person.height);
+        ctx.save();
+        if (person.isWet) {
+            ctx.drawImage(person.spriteWet, person.x, person.y, person.width, person.height);
+        } else {
+            if (person.vx > 0) {
+                ctx.scale(-1, 1);
+                ctx.drawImage(person.spriteLeft, -person.x - person.width, person.y, person.width, person.height);
+            } else {
+                ctx.drawImage(person.spriteLeft, person.x, person.y, person.width, person.height);
+            }
+        }
+        ctx.restore();
     }
 
     // Draw the lion sprite
@@ -332,7 +385,7 @@ function draw() {
 const keys = {};
 document.addEventListener('keydown', (event) => {
     keys[event.key] = true;
-    if (event.key === ' ') {
+    if (event.key === ' ' || event.key === 'ArrowUp') {
         if (player.isOnGround || player.canDoubleJump) {
             player.vy = player.jumpForce;
             if (!player.isOnGround) {
@@ -340,7 +393,7 @@ document.addEventListener('keydown', (event) => {
             }
         }
     }
-    if (event.key === 'e'){
+    if (event.key === 'e' || event.key === 'd' || event.key === 'c'){
         player.isSplashing = true;
     }
     if (event.key === 'r'){
