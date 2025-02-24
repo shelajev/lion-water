@@ -39,6 +39,11 @@ You control a lion that can run, jump, and splash water. Your mission is to spla
 - If no seed is provided, a random one will be generated and added to the URL
 
 ## How to Run
+
+### Option 1: GitHub Pages
+Simply visit the GitHub Pages URL for this repository.
+
+### Option 2: Local Server
 1. Make sure you have all the required image files in your directory:
    - lion.png
    - elephant.png
@@ -50,13 +55,13 @@ You control a lion that can run, jump, and splash water. Your mission is to spla
    - tree3.png
    - skedaddle.mp3 (background music)
 
-2. Open `water_game.html` in a web browser
+2. Open `index.html` in a web browser
    ```bash
    # Using Python's built-in server (Python 3)
    python -m http.server
 
    # Then open in your browser:
-   # http://localhost:8000/water_game.html
+   # http://localhost:8000/
    ```
 
 ## Technical Requirements
