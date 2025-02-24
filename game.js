@@ -33,7 +33,9 @@ const player = {
     isSplashing: false, splashCooldown: 0,
     sprite: new Image(),
     canDoubleJump: true, // Track if double jump is available
-    isOnGround: true // Track if the player is on the ground
+    isOnGround: true, // Track if the player is on the ground
+    hasMeat: false, // Track if the player has meat
+    hasSoup: false // Track if the player has soup
 };
 
 // Load the lion sprite
@@ -43,18 +45,33 @@ player.sprite.src = 'lion.png';
 const elephantSprite = new Image();
 elephantSprite.src = 'elephant.png';
 
+// Load power-up sprites
+const soupSprite = new Image();
+soupSprite.src = 'soup1.png';
+const meatSprite = new Image();
+meatSprite.src = 'meat1.png';
+
 let platforms = [];
 let people = [];
 let trees = []; // Array to hold tree positions
 let gameWon = false; // Flag to track if the game is won
 let elephants = []; // New array for elephants
+let powerUps = []; // New array for power-ups
 
-// Play background music
-const backgroundMusic = document.getElementById('backgroundMusic');
-// backgroundMusic.play(); // Remove this line
+// Update game stats to include power-up consumption
+let gameStats = {
+    gamesWon: parseInt(localStorage.getItem('gamesWon')) || 0,
+    peopleSplashed: parseInt(localStorage.getItem('peopleSplashed')) || 0,
+    waterRefills: parseInt(localStorage.getItem('waterRefills')) || 0,
+    soupsEaten: parseInt(localStorage.getItem('soupsEaten')) || 0,
+    meatsConsumed: parseInt(localStorage.getItem('meatsConsumed')) || 0
+};
 
-// Add music start to first interaction
-let musicStarted = false;
+// Update the stats in localStorage
+function updateStats(stat) {
+    gameStats[stat]++;
+    localStorage.setItem(stat, gameStats[stat]);
+}
 
 // Add seeded random number generator
 class Random {
@@ -104,6 +121,9 @@ function generateLevel() {
     trees = [];
     gameWon = false;
     elephants = [];
+    powerUps = []; // Reset power-ups
+    player.vx = 0;
+    player.jumpForce = -10;
 
     const numPlatforms = rng.randInt(9, 15); // Previously: Math.floor(Math.random() * 5 * 1.5) + 9
     const groundZones = 8;
@@ -116,7 +136,7 @@ function generateLevel() {
     const numElephants = rng.randInt(2, 4);
     for (let i = 0; i < numElephants; i++) {
         const elephantX = rng.randInt(0, canvas.width - elephantSize);
-        const elephantY = canvas.height - 50 - elephantSize * 0.7;
+        const elephantY = canvas.height - 50 - elephantSize * 0.9;
         const velocity = rng.chance(0.5) ? 0.4 : -0.4; // Slower elephants (was 0.5)
         
         elephants.push({
@@ -130,7 +150,7 @@ function generateLevel() {
     }
 
     for (let i = 0; i < numPlatforms; i++) {
-        let width = Math.max(rng.randInt(50, 200), personSize * 2);
+        let width = Math.max(rng.randInt(100, 300), personSize * 2);
         let height = 20;
         let x, y;
         let validPosition = false;
@@ -206,12 +226,12 @@ function generateLevel() {
         if (!foundPlatform) break;
 
         personX = rng.randInt(0, platform.width - personSize) + platform.x;
-        personY = platform.y - personSize * 0.7;
+        personY = platform.y - personSize * 0.9;
         occupiedPlatforms.add(platform);
 
         const velocity = rng.chance(0.5) ? 0.5 : -0.5;
         const spriteLeft = new Image();
-        spriteLeft.src = 'running-left.png';
+        spriteLeft.src = 'running.png';
         const spriteWet = new Image();
         spriteWet.src = 'umbrella.png';
 
@@ -225,6 +245,35 @@ function generateLevel() {
             platform,
             spriteLeft,
             spriteWet
+        });
+    }
+
+    // After generating platforms, add power-ups with 66% chance
+    // Add soup
+    if (rng.chance(0.66)) {
+        let platform = platforms[rng.randInt(1, platforms.length)];
+        powerUps.push({
+            x: platform.x + rng.random() * (platform.width - 90),
+            y: platform.y - 60, // Lower the icon (was -90)
+            width: 90,
+            height: 90,
+            type: 'soup',
+            sprite: soupSprite,
+            active: true
+        });
+    }
+
+    // Add meat
+    if (rng.chance(0.66)) {
+        let platform = platforms[rng.randInt(1, platforms.length)];
+        powerUps.push({
+            x: platform.x + rng.random() * (platform.width - 90),
+            y: platform.y - 60, // Lower the icon (was -90)
+            width: 90,
+            height: 90,
+            type: 'meat',
+            sprite: meatSprite,
+            active: true
         });
     }
 }
@@ -246,9 +295,14 @@ function gameLoop(currentTime) {
 function update(dt) {
     if (gameWon) return;
 
+    // Update movement speed based on meat power-up
+    const currentSpeed = 6 * (player.hasMeat ? 2 : 1);
     player.vx = 0;
-    if (keys['ArrowLeft']) player.vx = -6; // Faster lion movement (was -5)
-    if (keys['ArrowRight']) player.vx = 6; // Faster lion movement (was 5)
+    if (keys['ArrowLeft']) player.vx = -currentSpeed;
+    if (keys['ArrowRight']) player.vx = currentSpeed;
+
+    // Update jump force based on soup power-up
+    player.jumpForce = -10 * (player.hasSoup ? 2 : 1);
 
     player.vy += player.gravity;
     player.x += player.vx;
@@ -272,7 +326,10 @@ function update(dt) {
         player.x + player.width > well.x &&
         player.y < well.y + well.height &&
         player.y + player.height > well.y) {
-        player.waterLevel = 100;
+        if (player.waterLevel < 100) { // Only count as refill if water wasn't full
+            player.waterLevel = 100;
+            updateStats('waterRefills');
+        }
         player.hasBucket = true;
     }
 
@@ -285,11 +342,13 @@ function update(dt) {
             if (player.x < person.x + person.width + 50 &&
                 player.x + player.width + 50 > person.x &&
                 player.y < person.y + person.height &&
-                player.y + player.height > person.y) {
+                player.y + player.height > person.y &&
+                !person.isWet) { // Only count if person wasn't already wet
                 person.isWet = true;
-                person.vx = 0; // Stop movement when splashed
+                person.vx = 0;
                 player.waterLevel -= 20;
                 if (player.waterLevel < 0) player.waterLevel = 0;
+                updateStats('peopleSplashed');
             }
         }
         player.isSplashing = false;
@@ -337,8 +396,30 @@ function update(dt) {
         }
     }
 
-    // Check if all people (excluding elephants) are wet
-    gameWon = people.every(person => person.isWet);
+    // Check for power-up collisions
+    for (const powerUp of powerUps) {
+        if (powerUp.active && 
+            player.x < powerUp.x + powerUp.width &&
+            player.x + player.width > powerUp.x &&
+            player.y < powerUp.y + powerUp.height &&
+            player.y + player.height > powerUp.y) {
+            
+            powerUp.active = false;
+            if (powerUp.type === 'soup') {
+                player.hasSoup = true;
+                updateStats('soupsEaten');
+            } else if (powerUp.type === 'meat') {
+                player.hasMeat = true;
+                updateStats('meatsConsumed');
+            }
+        }
+    }
+
+    // Check if all people are wet and game wasn't won before
+    if (!gameWon && people.every(person => person.isWet)) {
+        gameWon = true;
+        updateStats('gamesWon');
+    }
 }
 
 function draw() {
@@ -398,6 +479,26 @@ function draw() {
     ctx.fillStyle = 'blue';
     ctx.fillRect(player.x, player.y - 10, (player.waterLevel / 100) * player.width, 5);
 
+    // Draw stats table in top right corner
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    ctx.fillRect(canvas.width - 200, 10, 190, 120); // Shorter table (was 140)
+    
+    ctx.fillStyle = 'white';
+    ctx.font = '16px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText('Games Won: ' + gameStats.gamesWon, canvas.width - 190, 35);
+    ctx.fillText('People Splashed: ' + gameStats.peopleSplashed, canvas.width - 190, 55);
+    ctx.fillText('Water Refills: ' + gameStats.waterRefills, canvas.width - 190, 75);
+    ctx.fillText('Soups Eaten: ' + gameStats.soupsEaten, canvas.width - 190, 95);
+    ctx.fillText('Meats Consumed: ' + gameStats.meatsConsumed, canvas.width - 190, 115);
+
+    // Draw power-ups
+    for (const powerUp of powerUps) {
+        if (powerUp.active) {
+            ctx.drawImage(powerUp.sprite, powerUp.x, powerUp.y, powerUp.width, powerUp.height);
+        }
+    }
+
     // Display win message if the game is won
     if (gameWon) {
         ctx.fillStyle = 'gold';
@@ -409,12 +510,6 @@ function draw() {
 
 const keys = {};
 document.addEventListener('keydown', (event) => {
-    // Start music on first interaction if not already started
-    if (!musicStarted) {
-        backgroundMusic.play().catch(e => console.log("Music play failed:", e));
-        musicStarted = true;
-    }
-
     keys[event.key] = true;
     if (event.key === ' ' || event.key === 'ArrowUp') {
         if (player.isOnGround || player.canDoubleJump) {
@@ -432,6 +527,8 @@ document.addEventListener('keydown', (event) => {
         player.x = 50;
         player.y = 50;
         player.waterLevel = 100;
+        player.hasMeat = false;
+        player.hasSoup = false;
     }
 });
 document.addEventListener('keyup', (event) => {

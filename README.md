@@ -32,6 +32,11 @@ You control a lion that can run, jump, and splash water. Your mission is to spla
 - People stop running when they get wet and show an umbrella
 - You win when all people are wet
 
+### Power-ups
+- **Soup**: Makes the lion jump twice as high
+- **Meat**: Makes the lion run twice as fast
+- Power-ups last until the level is reset
+
 ## Level Generation
 - Levels are procedurally generated using a seeded random number generator
 - You can share specific levels by sharing the URL with the seed parameter
@@ -53,7 +58,6 @@ Simply visit the GitHub Pages URL for this repository.
    - tree1.png
    - tree2.png
    - tree3.png
-   - skedaddle.mp3 (background music)
 
 2. Open `index.html` in a web browser
    ```bash
