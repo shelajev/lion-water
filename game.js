@@ -15,10 +15,10 @@ const well = {
 
 // Load the shower sprite for the well
 const wellSprite = new Image();
-wellSprite.src = 'shower.png';
+wellSprite.src = 'images/shower.png';
 
 // Load tree sprites
-const treeSprites = ['tree1.png', 'tree2.png', 'tree3.png'].map(src => {
+const treeSprites = ['images/tree1.png', 'images/tree2.png', 'images/tree3.png'].map(src => {
     const img = new Image();
     img.src = src;
     return img;
@@ -39,17 +39,17 @@ const player = {
 };
 
 // Load the lion sprite
-player.sprite.src = 'lion.png';
+player.sprite.src = 'images/lion.png';
 
 // Load elephant sprite
 const elephantSprite = new Image();
-elephantSprite.src = 'elephant.png';
+elephantSprite.src = 'images/elephant.png';
 
 // Load power-up sprites
 const soupSprite = new Image();
-soupSprite.src = 'soup1.png';
+soupSprite.src = 'images/soup1.png';
 const meatSprite = new Image();
-meatSprite.src = 'meat1.png';
+meatSprite.src = 'images/meat1.png';
 
 let platforms = [];
 let people = [];
@@ -312,9 +312,9 @@ function generateLevel() {
 
         const velocity = rng.chance(0.5) ? 0.5 : -0.5;
         const spriteLeft = new Image();
-        spriteLeft.src = 'running.png';
+        spriteLeft.src = 'images/running.png';
         const spriteWet = new Image();
-        spriteWet.src = 'umbrella.png';
+        spriteWet.src = 'images/umbrella.png';
 
         people.push({
             x: personX,
