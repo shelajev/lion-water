@@ -17,11 +17,19 @@ You control a lion that can run, jump, and splash water. Your mission is to spla
 - Win condition when all people are wet
 
 ## Controls
+
+### Desktop
 - **Left Arrow**: Move left
 - **Right Arrow**: Move right
 - **Up Arrow** or **Space**: Jump (press again while in the air for double jump)
 - **e** or **d** or **c**: Splash water
 - **r**: Reset/Generate new level
+
+### Mobile
+- **Touch Left Side**: Move left
+- **Touch Right Side**: Move right
+- **Swipe Up**: Jump (swipe again while in the air for double jump)
+- **Touch Water Drop Button**: Splash water
 
 ## Game Mechanics
 - The lion can carry water (shown by blue bar above)

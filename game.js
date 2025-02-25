@@ -106,11 +106,27 @@ if (!urlParams.has('seed')) {
     window.history.replaceState({}, '', `${window.location.pathname}?seed=${seed}`);
 }
 
+// Add touch controls state
+let touchControls = {
+    left: false,
+    right: false
+};
+
+// Add splash button dimensions
+const splashButton = {
+    x: 60,
+    y: canvas.height - 120,
+    radius: 40
+};
+
 function resizeCanvas() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
     well.x = canvas.width - 100;
-    well.y = canvas.height - 125; // Adjust position on resize
+    well.y = canvas.height - 125;
+    
+    // Update splash button position
+    splashButton.y = canvas.height - 120;
 }
 
 window.addEventListener('resize', resizeCanvas);
@@ -298,8 +314,8 @@ function update(dt) {
     // Update movement speed based on meat power-up
     const currentSpeed = 6 * (player.hasMeat ? 2 : 1);
     player.vx = 0;
-    if (keys['ArrowLeft']) player.vx = -currentSpeed;
-    if (keys['ArrowRight']) player.vx = currentSpeed;
+    if (keys['ArrowLeft'] || touchControls.left) player.vx = -currentSpeed;
+    if (keys['ArrowRight'] || touchControls.right) player.vx = currentSpeed;
 
     // Update jump force based on soup power-up
     player.jumpForce = -10 * (player.hasSoup ? 2 : 1);
@@ -506,6 +522,32 @@ function draw() {
         ctx.textAlign = 'center';
         ctx.fillText("Congratulations, you won!", canvas.width / 2, canvas.height / 2);
     }
+
+    // Draw mobile controls if on touch device
+    if ('ontouchstart' in window) {
+        // Draw splash button
+        ctx.beginPath();
+        ctx.arc(splashButton.x, splashButton.y, splashButton.radius, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        // Draw water drop shape
+        ctx.beginPath();
+        ctx.moveTo(splashButton.x, splashButton.y - 20);
+        ctx.bezierCurveTo(
+            splashButton.x - 20, splashButton.y + 10,
+            splashButton.x - 20, splashButton.y + 20,
+            splashButton.x, splashButton.y + 20
+        );
+        ctx.bezierCurveTo(
+            splashButton.x + 20, splashButton.y + 20,
+            splashButton.x + 20, splashButton.y + 10,
+            splashButton.x, splashButton.y - 20
+        );
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.stroke();
+    }
 }
 
 const keys = {};
@@ -533,6 +575,74 @@ document.addEventListener('keydown', (event) => {
 });
 document.addEventListener('keyup', (event) => {
     keys[event.key] = false;
+});
+
+// Add touch event handlers
+canvas.addEventListener('touchstart', (event) => {
+    event.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const touches = event.touches;
+
+    for (let touch of touches) {
+        const x = touch.clientX - rect.left;
+        const y = touch.clientY - rect.top;
+
+        // Check splash button
+        const dx = x - splashButton.x;
+        const dy = y - splashButton.y;
+        if (dx * dx + dy * dy < splashButton.radius * splashButton.radius) {
+            player.isSplashing = true;
+            continue;
+        }
+
+        // Check left/right controls
+        if (x < canvas.width / 2) {
+            touchControls.left = true;
+        } else {
+            touchControls.right = true;
+        }
+    }
+});
+
+canvas.addEventListener('touchend', (event) => {
+    event.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    
+    // Reset controls that are no longer being touched
+    const touches = event.touches;
+    touchControls.left = false;
+    touchControls.right = false;
+
+    for (let touch of touches) {
+        const x = touch.clientX - rect.left;
+        if (x < canvas.width / 2) {
+            touchControls.left = true;
+        } else {
+            touchControls.right = true;
+        }
+    }
+});
+
+// Add swipe detection for jumping
+let touchStartY = 0;
+canvas.addEventListener('touchstart', (event) => {
+    touchStartY = event.touches[0].clientY;
+});
+
+canvas.addEventListener('touchmove', (event) => {
+    event.preventDefault();
+    const touchY = event.touches[0].clientY;
+    const swipeDistance = touchStartY - touchY;
+
+    if (swipeDistance > 50) { // Minimum swipe distance
+        if (player.isOnGround || player.canDoubleJump) {
+            player.vy = player.jumpForce;
+            if (!player.isOnGround) {
+                player.canDoubleJump = false;
+            }
+        }
+        touchStartY = touchY; // Reset to prevent multiple jumps
+    }
 });
 
 gameLoop();
