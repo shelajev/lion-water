@@ -610,12 +610,16 @@ function draw() {
 
     // Draw mobile controls if on touch device
     if ('ontouchstart' in window) {
-        // Draw splash button
+        // Draw splash button with less transparency (more visible)
         ctx.beginPath();
         ctx.arc(splashButton.x, splashButton.y, splashButton.radius, 0, Math.PI * 2);
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-        ctx.lineWidth = 3;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)'; // Less transparent (was 0.5)
+        ctx.lineWidth = 4; // Thicker line (was 3)
         ctx.stroke();
+        
+        // Add slight fill for better visibility
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        ctx.fill();
 
         // Draw water drop shape
         ctx.beginPath();
@@ -630,7 +634,8 @@ function draw() {
             splashButton.x + 20, splashButton.y + 10,
             splashButton.x, splashButton.y - 20
         );
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.strokeStyle = 'rgba(0, 120, 255, 0.8)'; // Blue color, less transparent
+        ctx.lineWidth = 3;
         ctx.stroke();
     }
 }
@@ -685,10 +690,10 @@ canvas.addEventListener('touchstart', (event) => {
             continue;
         }
 
-        // Check left/right controls
-        if (x < canvas.width / 2) {
+        // Check left/right controls - only use 25% of screen on each side
+        if (x < canvas.width * 0.25) {
             touchControls.left = true;
-        } else {
+        } else if (x > canvas.width * 0.75) {
             touchControls.right = true;
         }
     }
@@ -705,9 +710,9 @@ canvas.addEventListener('touchend', (event) => {
 
     for (let touch of touches) {
         const x = touch.clientX - rect.left;
-        if (x < canvas.width / 2) {
+        if (x < canvas.width * 0.25) {
             touchControls.left = true;
-        } else {
+        } else if (x > canvas.width * 0.75) {
             touchControls.right = true;
         }
     }
