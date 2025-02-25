@@ -119,29 +119,93 @@ const splashButton = {
     radius: 40
 };
 
-function resizeCanvas() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    well.x = canvas.width - 100;
-    well.y = canvas.height - 125;
-    
-    // Update splash button position
-    splashButton.y = canvas.height - 120;
+// Add debug logging
+let debugMode = true;
+function log(message) {
+    if (debugMode && console) {
+        console.log(`[${new Date().toISOString()}] ${message}`);
+    }
 }
 
-window.addEventListener('resize', resizeCanvas);
+// Add loading indicator
+function showLoadingMessage() {
+    ctx.fillStyle = '#E0FFFF';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = 'black';
+    ctx.font = '24px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText("Loading game...", canvas.width / 2, canvas.height / 2);
+}
+
+// Adjust for iOS toolbar
+function detectMobileBrowser() {
+    log("Detecting mobile browser");
+    const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+    const isIOS = /iPad|iPhone|iPod/.test(userAgent) && !window.MSStream;
+    
+    if (isIOS) {
+        log("iOS device detected, adjusting for toolbar");
+        // Add bottom padding to account for toolbar
+        const bottomPadding = 80; // Typical iOS toolbar height
+        canvas.style.height = `calc(100vh - ${bottomPadding}px)`;
+        
+        // Adjust game elements
+        well.y = canvas.height - 125 - bottomPadding;
+        splashButton.y = canvas.height - 120 - bottomPadding;
+    }
+    
+    return /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
+}
+
+// Modify resizeCanvas to handle iOS toolbar
+function resizeCanvas() {
+    log("Resizing canvas");
+    const oldHeight = canvas.height;
+    canvas.width = window.innerWidth;
+    
+    // Check if we're on iOS
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    const bottomPadding = isIOS ? 80 : 0;
+    
+    canvas.height = window.innerHeight - bottomPadding;
+    log(`Canvas resized to ${canvas.width}x${canvas.height}`);
+    
+    // Adjust game elements
+    well.x = canvas.width - 100;
+    well.y = canvas.height - 125;
+    splashButton.y = canvas.height - 120;
+    
+    // If height changed significantly, regenerate level to fit new dimensions
+    if (Math.abs(oldHeight - canvas.height) > 100) {
+        log("Height changed significantly, regenerating level");
+        generateLevel();
+    }
+}
 
 function generateLevel() {
+    log("Starting level generation");
+    const startTime = performance.now();
+    
+    // Reset game state
     platforms = [{ x: 0, y: canvas.height - 50, width: canvas.width, height: 50 }];
     people = [];
     trees = [];
     gameWon = false;
     elephants = [];
-    powerUps = []; // Reset power-ups
+    powerUps = [];
     player.vx = 0;
     player.jumpForce = -10;
-
-    const numPlatforms = rng.randInt(9, 15); // Previously: Math.floor(Math.random() * 5 * 1.5) + 9
+    
+    // Detect if we're on mobile and reduce complexity
+    const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(navigator.userAgent);
+    
+    // Adjust complexity based on device
+    const numPlatforms = isMobile ? rng.randInt(5, 10) : rng.randInt(9, 15);
+    const numTrees = isMobile ? 1 : rng.randInt(1, 3);
+    const numGroundTrees = isMobile ? rng.randInt(1, 3) : rng.randInt(2, 5);
+    
+    log(`Generating ${numPlatforms} platforms (mobile: ${isMobile})`);
+    
     const groundZones = 8;
     const zoneWidth = canvas.width / groundZones;
     const personSize = 60;
@@ -205,7 +269,6 @@ function generateLevel() {
         platforms.push({ x, y, width, height });
 
         // Randomly place trees on the platform
-        const numTrees = rng.randInt(1, 3);
         for (let j = 0; j < numTrees; j++) {
             const treeX = rng.random() * (width - 50) + x;
             const treeY = y - 65;
@@ -215,7 +278,6 @@ function generateLevel() {
     }
 
     // Place trees on the ground
-    const numGroundTrees = rng.randInt(2, 5);
     for (let i = 0; i < numGroundTrees; i++) {
         const treeX = rng.random() * (canvas.width - 50);
         const treeY = canvas.height - 120;
@@ -292,9 +354,10 @@ function generateLevel() {
             active: true
         });
     }
-}
 
-generateLevel();
+    const endTime = performance.now();
+    log(`Level generation completed in ${endTime - startTime}ms`);
+}
 
 let lastFrameTime = 0;
 
@@ -708,4 +771,18 @@ canvas.addEventListener('mousedown', (event) => {
     handleClick(x, y);
 });
 
-gameLoop();
+// Initialize game with loading indicator
+window.onload = function() {
+    log("Window loaded");
+    showLoadingMessage();
+    detectMobileBrowser();
+    
+    // Delay level generation to allow loading message to render
+    setTimeout(() => {
+        log("Starting game initialization");
+        resizeCanvas();
+        generateLevel();
+        gameLoop(0);
+        log("Game initialized");
+    }, 100);
+};

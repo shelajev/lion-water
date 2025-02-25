@@ -2,7 +2,7 @@
 
 A fun platformer game where you play as a lion trying to splash water on running people while avoiding elephants. The goal is to get all the people wet!
 
-Try it out here: [shelajev.github.io/lion.html](https://shelajev.github.io/lion.html)!
+Try it out here: [shelajev.github.io/lion-water/lion.html](https://shelajev.github.io/lion-water/lion.html)!
 
 ## Game Description
 
