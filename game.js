@@ -112,11 +112,11 @@ let touchControls = {
     right: false
 };
 
-// Add splash button dimensions
+// Update splash button dimensions - make it 3x larger and move to top half
 const splashButton = {
     x: canvas.width / 2,
-    y: canvas.height - 120,
-    radius: 40
+    y: canvas.height * 0.3, // Move to top half of screen
+    radius: 120 // 3x larger (was 40)
 };
 
 // Add debug logging
@@ -137,7 +137,7 @@ function showLoadingMessage() {
     ctx.fillText("Loading game...", canvas.width / 2, canvas.height / 2);
 }
 
-// Adjust for iOS toolbar - increase bottom padding
+// Adjust for iOS toolbar with higher ground
 function detectMobileBrowser() {
     log("Detecting mobile browser");
     const userAgent = navigator.userAgent || navigator.vendor || window.opera;
@@ -145,19 +145,19 @@ function detectMobileBrowser() {
     
     if (isIOS) {
         log("iOS device detected, adjusting for toolbar");
-        // Add bottom padding to account for toolbar - increase to 120px
-        const bottomPadding = 120; // Increased from 80px
+        // Add bottom padding to account for toolbar
+        const bottomPadding = 150; // Increased from 120px
         canvas.style.height = `calc(100vh - ${bottomPadding}px)`;
         
         // Adjust game elements
-        well.y = canvas.height - 125 - bottomPadding;
-        splashButton.y = canvas.height - 120 - bottomPadding;
+        well.y = canvas.height - 155; // Move up 30px
+        splashButton.y = canvas.height * 0.3; // Keep in top half
     }
     
     return /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
 }
 
-// Modify resizeCanvas to update splash button position
+// Update resizeCanvas to handle new splash button position
 function resizeCanvas() {
     log("Resizing canvas");
     const oldHeight = canvas.height;
@@ -165,18 +165,18 @@ function resizeCanvas() {
     
     // Check if we're on iOS
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-    const bottomPadding = isIOS ? 120 : 0; // Increased from 80px
+    const bottomPadding = isIOS ? 150 : 0; // Increased from 120px
     
     canvas.height = window.innerHeight - bottomPadding;
     log(`Canvas resized to ${canvas.width}x${canvas.height}`);
     
     // Adjust game elements
     well.x = canvas.width - 100;
-    well.y = canvas.height - 125;
+    well.y = canvas.height - 155; // Move up 30px
     
-    // Update splash button to center of screen
+    // Update splash button to center of screen in top half
     splashButton.x = canvas.width / 2;
-    splashButton.y = canvas.height - 120;
+    splashButton.y = canvas.height * 0.3;
     
     // If height changed significantly, regenerate level to fit new dimensions
     if (Math.abs(oldHeight - canvas.height) > 100) {
@@ -190,7 +190,7 @@ function generateLevel() {
     const startTime = performance.now();
     
     // Reset game state
-    platforms = [{ x: 0, y: canvas.height - 50, width: canvas.width, height: 50 }];
+    platforms = [{ x: 0, y: canvas.height - 80, width: canvas.width, height: 50 }];
     people = [];
     trees = [];
     gameWon = false;
@@ -219,7 +219,7 @@ function generateLevel() {
     const numElephants = rng.randInt(2, 4);
     for (let i = 0; i < numElephants; i++) {
         const elephantX = rng.randInt(0, canvas.width - elephantSize);
-        const elephantY = canvas.height - 50 - elephantSize * 0.9;
+        const elephantY = canvas.height - 80 - elephantSize * 0.9;
         const velocity = rng.chance(0.5) ? 0.4 : -0.4; // Slower elephants (was 0.5)
         
         elephants.push({
@@ -618,28 +618,28 @@ function draw() {
         ctx.beginPath();
         ctx.arc(splashButton.x, splashButton.y, splashButton.radius, 0, Math.PI * 2);
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-        ctx.lineWidth = 4;
+        ctx.lineWidth = 6; // Thicker line for larger button
         ctx.stroke();
         
         // Add slight fill for better visibility
         ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
         ctx.fill();
 
-        // Draw water drop shape
+        // Draw water drop shape - scaled up for larger button
         ctx.beginPath();
-        ctx.moveTo(splashButton.x, splashButton.y - 20);
+        ctx.moveTo(splashButton.x, splashButton.y - 60);
         ctx.bezierCurveTo(
-            splashButton.x - 20, splashButton.y + 10,
-            splashButton.x - 20, splashButton.y + 20,
-            splashButton.x, splashButton.y + 20
+            splashButton.x - 60, splashButton.y + 30,
+            splashButton.x - 60, splashButton.y + 60,
+            splashButton.x, splashButton.y + 60
         );
         ctx.bezierCurveTo(
-            splashButton.x + 20, splashButton.y + 20,
-            splashButton.x + 20, splashButton.y + 10,
-            splashButton.x, splashButton.y - 20
+            splashButton.x + 60, splashButton.y + 60,
+            splashButton.x + 60, splashButton.y + 30,
+            splashButton.x, splashButton.y - 60
         );
         ctx.strokeStyle = 'rgba(0, 120, 255, 0.8)';
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 5;
         ctx.stroke();
     }
 }
@@ -686,12 +686,14 @@ canvas.addEventListener('touchstart', (event) => {
             return;
         }
 
-        // Check splash button
+        // Check splash button - improved detection
         const dx = x - splashButton.x;
         const dy = y - splashButton.y;
-        if (dx * dx + dy * dy < splashButton.radius * splashButton.radius) {
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        if (distance < splashButton.radius) {
             player.isSplashing = true;
-            continue;
+            log("Splash button pressed");
+            return; // Return to prevent movement when splashing
         }
 
         // Check left/right controls - only use 25% of screen on each side
