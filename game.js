@@ -114,7 +114,7 @@ let touchControls = {
 
 // Add splash button dimensions
 const splashButton = {
-    x: 60,
+    x: canvas.width / 2,
     y: canvas.height - 120,
     radius: 40
 };
@@ -137,7 +137,7 @@ function showLoadingMessage() {
     ctx.fillText("Loading game...", canvas.width / 2, canvas.height / 2);
 }
 
-// Adjust for iOS toolbar
+// Adjust for iOS toolbar - increase bottom padding
 function detectMobileBrowser() {
     log("Detecting mobile browser");
     const userAgent = navigator.userAgent || navigator.vendor || window.opera;
@@ -145,8 +145,8 @@ function detectMobileBrowser() {
     
     if (isIOS) {
         log("iOS device detected, adjusting for toolbar");
-        // Add bottom padding to account for toolbar
-        const bottomPadding = 80; // Typical iOS toolbar height
+        // Add bottom padding to account for toolbar - increase to 120px
+        const bottomPadding = 120; // Increased from 80px
         canvas.style.height = `calc(100vh - ${bottomPadding}px)`;
         
         // Adjust game elements
@@ -157,7 +157,7 @@ function detectMobileBrowser() {
     return /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
 }
 
-// Modify resizeCanvas to handle iOS toolbar
+// Modify resizeCanvas to update splash button position
 function resizeCanvas() {
     log("Resizing canvas");
     const oldHeight = canvas.height;
@@ -165,7 +165,7 @@ function resizeCanvas() {
     
     // Check if we're on iOS
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-    const bottomPadding = isIOS ? 80 : 0;
+    const bottomPadding = isIOS ? 120 : 0; // Increased from 80px
     
     canvas.height = window.innerHeight - bottomPadding;
     log(`Canvas resized to ${canvas.width}x${canvas.height}`);
@@ -173,6 +173,9 @@ function resizeCanvas() {
     // Adjust game elements
     well.x = canvas.width - 100;
     well.y = canvas.height - 125;
+    
+    // Update splash button to center of screen
+    splashButton.x = canvas.width / 2;
     splashButton.y = canvas.height - 120;
     
     // If height changed significantly, regenerate level to fit new dimensions
@@ -501,6 +504,7 @@ function update(dt) {
     }
 }
 
+// Update draw function to hide splash button when game is won
 function draw() {
     // Set the background color to a pale light blue
     ctx.fillStyle = '#E0FFFF';
@@ -608,13 +612,13 @@ function draw() {
         playAgainButton = null;
     }
 
-    // Draw mobile controls if on touch device
-    if ('ontouchstart' in window) {
+    // Draw mobile controls if on touch device and game is not won
+    if ('ontouchstart' in window && !gameWon) {
         // Draw splash button with less transparency (more visible)
         ctx.beginPath();
         ctx.arc(splashButton.x, splashButton.y, splashButton.radius, 0, Math.PI * 2);
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)'; // Less transparent (was 0.5)
-        ctx.lineWidth = 4; // Thicker line (was 3)
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+        ctx.lineWidth = 4;
         ctx.stroke();
         
         // Add slight fill for better visibility
@@ -634,7 +638,7 @@ function draw() {
             splashButton.x + 20, splashButton.y + 10,
             splashButton.x, splashButton.y - 20
         );
-        ctx.strokeStyle = 'rgba(0, 120, 255, 0.8)'; // Blue color, less transparent
+        ctx.strokeStyle = 'rgba(0, 120, 255, 0.8)';
         ctx.lineWidth = 3;
         ctx.stroke();
     }
