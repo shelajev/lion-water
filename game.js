@@ -515,12 +515,34 @@ function draw() {
         }
     }
 
-    // Display win message if the game is won
+    // Display win message and play again button if the game is won
     if (gameWon) {
+        // Draw congratulations message
         ctx.fillStyle = 'gold';
         ctx.font = '60px Comic Sans MS';
         ctx.textAlign = 'center';
         ctx.fillText("Congratulations, you won!", canvas.width / 2, canvas.height / 2);
+
+        // Draw play more button
+        ctx.fillStyle = '#444444'; // Dark gray color
+        ctx.font = '40px Arial';
+        ctx.fillText("Play More", canvas.width / 2, canvas.height / 2 + 60);
+
+        // Add invisible button hitbox for mouse/touch
+        const buttonWidth = 200;
+        const buttonHeight = 50;
+        const buttonX = canvas.width / 2 - buttonWidth / 2;
+        const buttonY = canvas.height / 2 + 30;
+
+        // Store button position for click detection
+        playAgainButton = {
+            x: buttonX,
+            y: buttonY,
+            width: buttonWidth,
+            height: buttonHeight
+        };
+    } else {
+        playAgainButton = null;
     }
 
     // Draw mobile controls if on touch device
@@ -587,6 +609,11 @@ canvas.addEventListener('touchstart', (event) => {
         const x = touch.clientX - rect.left;
         const y = touch.clientY - rect.top;
 
+        // Check for play again button first
+        if (handleClick(x, y)) {
+            return;
+        }
+
         // Check splash button
         const dx = x - splashButton.x;
         const dy = y - splashButton.y;
@@ -643,6 +670,42 @@ canvas.addEventListener('touchmove', (event) => {
         }
         touchStartY = touchY; // Reset to prevent multiple jumps
     }
+});
+
+// Modify click handler to generate new level
+function handleClick(x, y) {
+    if (gameWon && playAgainButton) {
+        if (x >= playAgainButton.x && 
+            x <= playAgainButton.x + playAgainButton.width &&
+            y >= playAgainButton.y && 
+            y <= playAgainButton.y + playAgainButton.height) {
+            
+            // Generate new random seed
+            rng.seed = Math.floor(Math.random() * 1000000);
+            // Update URL with new seed
+            window.history.replaceState({}, '', `${window.location.pathname}?seed=${rng.seed}`);
+            
+            generateLevel();
+            player.x = 50;
+            player.y = 50;
+            player.waterLevel = 100;
+            player.hasMeat = false;
+            player.hasSoup = false;
+            return true;
+        }
+    }
+    return false;
+}
+
+// Add variable to track button position
+let playAgainButton = null;
+
+// Add mouse click handler
+canvas.addEventListener('mousedown', (event) => {
+    const rect = canvas.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+    handleClick(x, y);
 });
 
 gameLoop();
